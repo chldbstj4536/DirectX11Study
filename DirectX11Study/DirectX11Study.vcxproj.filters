@@ -96,4 +96,9 @@
       <Filter>Common</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\FX\color.fx">
+      <Filter>리소스 파일</Filter>
+    </FxCompile>
+  </ItemGroup>
 </Project>

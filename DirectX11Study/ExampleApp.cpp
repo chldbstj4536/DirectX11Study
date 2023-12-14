@@ -1,18 +1,19 @@
 #include "ExampleApp.h"
+#include <GeometryGenerator.h>
 
 ExampleApp::ExampleApp(HINSTANCE hInstance)
     : D3DApp(hInstance)
-    , mBoxVB(nullptr)
-    , mBoxIB(nullptr)
+    , mVB(nullptr)
+    , mIB(nullptr)
     , mFX(nullptr)
     , mTech(nullptr)
     , mfxWorldViewProj(nullptr)
     , mInputLayout(nullptr)
     , mTheta(1.5f * MathHelper::Pi)
     , mPhi(0.25f * MathHelper::Pi)
-    , mRadius(5.0f)
+    , mRadius(200.0f)
 {
-    mMainWndCaption = L"Box Demo";
+    mMainWndCaption = L"Hills Demo";
 
     mLastMousePos.x = 0;
     mLastMousePos.y = 0;
@@ -25,8 +26,8 @@ ExampleApp::ExampleApp(HINSTANCE hInstance)
 
 ExampleApp::~ExampleApp()
 {
-    ReleaseCOM(mBoxVB);
-    ReleaseCOM(mBoxIB);
+    ReleaseCOM(mVB);
+    ReleaseCOM(mIB);
     ReleaseCOM(mFX);
     ReleaseCOM(mInputLayout);
 }
@@ -84,8 +85,8 @@ void ExampleApp::DrawScene()
 
     UINT stride = sizeof(Vertex);
     UINT offset = 0;
-    md3dImmediateContext->IASetVertexBuffers(0, 1, &mBoxVB, &stride, &offset);
-    md3dImmediateContext->IASetIndexBuffer(mBoxIB, DXGI_FORMAT_R32_UINT, 0);
+    md3dImmediateContext->IASetVertexBuffers(0, 1, &mVB, &stride, &offset);
+    md3dImmediateContext->IASetIndexBuffer(mIB, DXGI_FORMAT_R32_UINT, 0);
 
     // 상수들을 설정한다.
     XMMATRIX world = XMLoadFloat4x4(&mWorld);
@@ -102,7 +103,7 @@ void ExampleApp::DrawScene()
         mTech->GetPassByIndex(p)->Apply(0, md3dImmediateContext);
 
         // 색인 36개로 상자를 그린다.
-        md3dImmediateContext->DrawIndexed(36, 0, 0);
+        md3dImmediateContext->DrawIndexed(mGridIndexCount, 0, 0);
     }
 
     // 후면 버퍼를 화면에 제시한다.
@@ -156,72 +157,82 @@ void ExampleApp::OnMouseMove(WPARAM btnState, int x, int y)
 
 void ExampleApp::BuildGeometryBuffers()
 {
-    // 정점 버퍼를 생성한다.
-    Vertex vertices[] =
+    GeometryGenerator::MeshData grid;
+
+    GeometryGenerator geoGen;
+
+    geoGen.CreateGrid(160.0f, 160.0f, 50, 50, grid);
+
+    mGridIndexCount = grid.Indices.size();
+
+    // 필요한 정점 특성들을 추출하고, 각 정점에 높이 함수를 적용한다.
+    // 또한 그 높이에 기초해서 정점의 색상도 적절히 설정한다. 이를 통해서
+    // 모래 색의 해변과 녹색의 언덕, 그리고 흰눈 덮인 봉우리 같은 모습이 만들어진다.
+
+    std::vector<Vertex> vertices(grid.Vertices.size());
+    for (size_t i = 0; i < grid.Vertices.size(); ++i)
     {
-        { XMFLOAT3(-1.0f, -1.0f, -1.0f),    (const float*)&Colors::White },
-        { XMFLOAT3(-1.0f, 1.0f, -1.0f),     (const float*)&Colors::Black },
-        { XMFLOAT3(1.0f, 1.0f, -1.0f),      (const float*)&Colors::Red },
-        { XMFLOAT3(1.0f, -1.0f, -1.0f),     (const float*)&Colors::Green },
-        { XMFLOAT3(-1.0f, -1.0f, 1.0f),     (const float*)&Colors::Blue },
-        { XMFLOAT3(-1.0f, 1.0f, 1.0f),      (const float*)&Colors::Yellow },
-        { XMFLOAT3(1.0f, 1.0f, 1.0f),       (const float*)&Colors::Cyan },
-        { XMFLOAT3(1.0f, -1.0f, 1.0f),      (const float*)&Colors::Magenta },
-    };
+        XMFLOAT3 p = grid.Vertices[i].Position;
+
+        p.y = GetHeight(p.x, p.z);
+
+        vertices[i].pos = p;
+
+        // 높이에 기초해서 정점의 색상을 설정한다.
+        if (p.y < -10.0f)
+        {
+            // 해변의 모래 색
+            vertices[i].color = XMFLOAT4(1.0f, 0.96f, 0.62f, 1.0f);
+        }
+        else if (p.y < 5.0f)
+        {
+            // 밝은 녹황색
+            vertices[i].color = XMFLOAT4(0.46f, 0.77f, 0.46f, 1.0f);
+        }
+        else if (p.y < 12.0f)
+        {
+            // 짙은 녹황색
+            vertices[i].color = XMFLOAT4(0.1f, 0.48f, 0.19f, 1.0f);
+        }
+        else if (p.y < 20.0f)
+        {
+            // 짙은 갈색
+            vertices[i].color = XMFLOAT4(0.45f, 0.39f, 0.34f, 1.0f);
+        }
+        else
+        {
+            // 흰색(눈)
+            vertices[i].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        }
+    }
 
     D3D11_BUFFER_DESC vbd;
     vbd.Usage = D3D11_USAGE_IMMUTABLE;
-    vbd.ByteWidth = sizeof(Vertex) * 8;
+    vbd.ByteWidth = sizeof(Vertex) * vertices.size();
     vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     vbd.CPUAccessFlags = 0;
     vbd.MiscFlags = 0;
     vbd.StructureByteStride = 0;
 
     D3D11_SUBRESOURCE_DATA vinitData;
-    vinitData.pSysMem = vertices;
+    vinitData.pSysMem = vertices.data();
 
-    HR(md3dDevice->CreateBuffer(&vbd, &vinitData, &mBoxVB));
+    HR(md3dDevice->CreateBuffer(&vbd, &vinitData, &mVB));
 
-    // 색인 버퍼를 생성한다.
-    UINT indices[] =
-    {
-        // 상자의 앞면
-        0, 1, 2,
-        0, 2, 3,
-
-        // 뒷면
-        4, 6, 5,
-        4, 7, 6,
-
-        // 왼쪽 면
-        4, 5, 1,
-        4, 1, 0,
-
-        // 오른쪽 면
-        3, 2, 6,
-        3, 6, 7,
-
-        // 윗면
-        1, 5, 6,
-        1, 6, 2,
-
-        // 밑면
-        4, 0, 3,
-        4, 3, 7,
-    };
+    // 모든 메시의 색인들을 하나의 색인 버퍼에 합쳐 넣는다.
 
     D3D11_BUFFER_DESC ibd;
     ibd.Usage = D3D11_USAGE_IMMUTABLE;
-    ibd.ByteWidth = sizeof(UINT) * 36;
+    ibd.ByteWidth = sizeof(UINT) * mGridIndexCount;
     ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
     ibd.CPUAccessFlags = 0;
     ibd.MiscFlags = 0;
     ibd.StructureByteStride = 0;
 
     D3D11_SUBRESOURCE_DATA iinitData;
-    iinitData.pSysMem = indices;
+    iinitData.pSysMem = grid.Indices.data();
 
-    HR(md3dDevice->CreateBuffer(&ibd, &iinitData, &mBoxIB));
+    HR(md3dDevice->CreateBuffer(&ibd, &iinitData, &mIB));
 }
 
 void ExampleApp::BuildFX()
@@ -273,4 +284,9 @@ void ExampleApp::BuildVertexLayout()
     D3DX11_PASS_DESC passDesc;
     mTech->GetPassByIndex(0)->GetDesc(&passDesc);
     HR(md3dDevice->CreateInputLayout(vertexDesc, 2, passDesc.pIAInputSignature, passDesc.IAInputSignatureSize, &mInputLayout));
+}
+
+float ExampleApp::GetHeight(float x, float z) const
+{
+    return 0.3f * (z * sinf(0.1f * x) + x * cosf(0.1f * z));
 }

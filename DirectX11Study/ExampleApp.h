@@ -27,10 +27,11 @@ private:
     void BuildGeometryBuffers();
     void BuildFX();
     void BuildVertexLayout();
+    float GetHeight(float x, float z) const;
 
 private:
-    ID3D11Buffer* mBoxVB;
-    ID3D11Buffer* mBoxIB;
+    ID3D11Buffer* mVB;
+    ID3D11Buffer* mIB;
 
     ID3DX11Effect* mFX;
     ID3DX11EffectTechnique* mTech;
@@ -46,5 +47,6 @@ private:
     float mPhi;
     float mRadius;
 
+    UINT mGridIndexCount;
     POINT mLastMousePos;
 };
