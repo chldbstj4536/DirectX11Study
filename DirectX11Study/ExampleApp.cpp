@@ -11,15 +11,14 @@ ExampleApp::ExampleApp(HINSTANCE hInstance)
     , mInputLayout(nullptr)
     , mTheta(1.5f * MathHelper::Pi)
     , mPhi(0.25f * MathHelper::Pi)
-    , mRadius(200.0f)
+    , mRadius(20.0f)
 {
-    mMainWndCaption = L"Hills Demo";
+    mMainWndCaption = L"Shapes Demo";
 
     mLastMousePos.x = 0;
     mLastMousePos.y = 0;
 
     XMMATRIX I = XMMatrixIdentity();
-    XMStoreFloat4x4(&mWorld, I);
     XMStoreFloat4x4(&mView, I);
     XMStoreFloat4x4(&mProj, I);
 }
@@ -41,6 +40,27 @@ bool ExampleApp::Init()
     BuildFX();
     BuildVertexLayout();
 
+    // 국소 공간에서 세계 공간으로의 변환 행렬을 정의
+    XMMATRIX I = XMMatrixIdentity();
+    XMStoreFloat4x4(&mGridWorld, I);
+
+    XMMATRIX boxScale = XMMatrixScaling(2.0f, 1.0f, 2.0f);
+    XMMATRIX boxOffset = XMMatrixTranslation(0.0f, 0.5f, 0.0f);
+    XMStoreFloat4x4(&mBoxWorld, XMMatrixMultiply(boxScale, boxOffset));
+
+    XMMATRIX centerSphereScale = XMMatrixScaling(2.0f, 2.0f, 2.0f);
+    XMMATRIX centerSphereOffset = XMMatrixTranslation(0.0f, 2.0f, 0.0f);
+    XMStoreFloat4x4(&mCenterSphere, XMMatrixMultiply(centerSphereScale, centerSphereOffset));
+
+    // 원기둥들은 다섯줄로 배치되는데, 하나의 줄은 두 개의 원기둥 + 구 쌍으로 이루어진다.
+    for (int i = 0; i < 5; ++i)
+    {
+        XMStoreFloat4x4(&mCylinderWorld[i * 2 + 0], XMMatrixTranslation(-5.0f, 1.5f, -10.0f + i * 5.0f));
+        XMStoreFloat4x4(&mCylinderWorld[i * 2 + 1], XMMatrixTranslation(+5.0f, 1.5f, -10.0f + i * 5.0f));
+
+        XMStoreFloat4x4(&mSphereWorld[i * 2 + 0], XMMatrixTranslation(-5.0f, 3.5f, -10.0f + i * 5.0f));
+        XMStoreFloat4x4(&mSphereWorld[i * 2 + 1], XMMatrixTranslation(+5.0f, 3.5f, -10.0f + i * 5.0f));
+    }
     return true;
 }
 
@@ -89,21 +109,66 @@ void ExampleApp::DrawScene()
     md3dImmediateContext->IASetIndexBuffer(mIB, DXGI_FORMAT_R32_UINT, 0);
 
     // 상수들을 설정한다.
-    XMMATRIX world = XMLoadFloat4x4(&mWorld);
     XMMATRIX view = XMLoadFloat4x4(&mView);
     XMMATRIX proj = XMLoadFloat4x4(&mProj);
-    XMMATRIX worldViewProj = world * view * proj;
-
-    mfxWorldViewProj->SetMatrix(reinterpret_cast<float*>(&worldViewProj));
+    XMMATRIX viewProj = view * proj;
+    XMMATRIX worldViewProj;
 
     D3DX11_TECHNIQUE_DESC techDesc;
     mTech->GetDesc(&techDesc);
+
+    // 그리드 그리기
+    worldViewProj = XMLoadFloat4x4(&mGridWorld) * viewProj;
+    mfxWorldViewProj->SetMatrix(reinterpret_cast<float*>(&worldViewProj));
     for (UINT p = 0; p < techDesc.Passes; ++p)
     {
         mTech->GetPassByIndex(p)->Apply(0, md3dImmediateContext);
+        md3dImmediateContext->DrawIndexed(mGridIndexCount, mGridIndexOffset, mGridVertexOffset);
+    }
 
-        // 색인 36개로 상자를 그린다.
-        md3dImmediateContext->DrawIndexed(mGridIndexCount, 0, 0);
+
+    // 구 그리기
+    for (int i = 0; i < 10; ++i)
+    {
+        worldViewProj = XMLoadFloat4x4(&mSphereWorld[i]) * view * proj;
+        mfxWorldViewProj->SetMatrix(reinterpret_cast<float*>(&worldViewProj));
+        for (UINT p = 0; p < techDesc.Passes; ++p)
+        {
+            mTech->GetPassByIndex(p)->Apply(0, md3dImmediateContext);
+            md3dImmediateContext->DrawIndexed(mSphereIndexCount, mSphereIndexOffset, mSphereVertexOffset);
+        }
+    }
+
+    // 원뿔 그리기
+    for (int i = 0; i < 10; ++i)
+    {
+        worldViewProj = XMLoadFloat4x4(&mCylinderWorld[i]) * view * proj;
+        mfxWorldViewProj->SetMatrix(reinterpret_cast<float*>(&worldViewProj));
+        for (UINT p = 0; p < techDesc.Passes; ++p)
+        {
+            mTech->GetPassByIndex(p)->Apply(0, md3dImmediateContext);
+            md3dImmediateContext->DrawIndexed(mCylinderIndexCount, mCylinderIndexOffset, mCylinderVertexOffset);
+        }
+    }
+
+
+    // 상자 그리기
+    worldViewProj = XMLoadFloat4x4(&mBoxWorld) * viewProj;
+    mfxWorldViewProj->SetMatrix(reinterpret_cast<float*>(&worldViewProj));
+    for (UINT p = 0; p < techDesc.Passes; ++p)
+    {
+        mTech->GetPassByIndex(p)->Apply(0, md3dImmediateContext);
+        md3dImmediateContext->DrawIndexed(mBoxIndexCount, mBoxIndexOffset, mBoxVertexOffset);
+    }
+
+
+    // 중앙 구체 그리기
+    worldViewProj = XMLoadFloat4x4(&mCenterSphere) * viewProj;
+    mfxWorldViewProj->SetMatrix(reinterpret_cast<float*>(&worldViewProj));
+    for (UINT p = 0; p < techDesc.Passes; ++p)
+    {
+        mTech->GetPassByIndex(p)->Apply(0, md3dImmediateContext);
+        md3dImmediateContext->DrawIndexed(mSphereIndexCount, mSphereIndexOffset, mSphereVertexOffset);
     }
 
     // 후면 버퍼를 화면에 제시한다.
@@ -158,53 +223,66 @@ void ExampleApp::OnMouseMove(WPARAM btnState, int x, int y)
 void ExampleApp::BuildGeometryBuffers()
 {
     GeometryGenerator::MeshData grid;
+    GeometryGenerator::MeshData sphere;
+    GeometryGenerator::MeshData cylinder;
+    GeometryGenerator::MeshData box;
 
     GeometryGenerator geoGen;
+    geoGen.CreateGrid(20.0f, 20.0f, 60, 40, grid);
+    geoGen.CreateSphere(0.5f, 20, 20, sphere);
+    geoGen.CreateCylinder(0.5f, 0.3f, 3.0f, 20, 20, cylinder);
+    geoGen.CreateBox(1.0f, 1.0f, 1.0f, box);
 
-    geoGen.CreateGrid(160.0f, 160.0f, 50, 50, grid);
+    mGridVertexOffset = 0;
+    mSphereVertexOffset = grid.Vertices.size();
+    mCylinderVertexOffset = mSphereVertexOffset + sphere.Vertices.size();
+    mBoxVertexOffset = mCylinderVertexOffset + cylinder.Vertices.size();
 
     mGridIndexCount = grid.Indices.size();
+    mSphereIndexCount = sphere.Indices.size();
+    mCylinderIndexCount = cylinder.Indices.size();
+    mBoxIndexCount = box.Indices.size();
 
-    // 필요한 정점 특성들을 추출하고, 각 정점에 높이 함수를 적용한다.
-    // 또한 그 높이에 기초해서 정점의 색상도 적절히 설정한다. 이를 통해서
-    // 모래 색의 해변과 녹색의 언덕, 그리고 흰눈 덮인 봉우리 같은 모습이 만들어진다.
+    mGridIndexOffset = 0;
+    mSphereIndexOffset = grid.Indices.size();
+    mCylinderIndexOffset = mSphereIndexOffset + sphere.Indices.size();
+    mBoxIndexOffset = mCylinderIndexOffset + cylinder.Indices.size();
 
-    std::vector<Vertex> vertices(grid.Vertices.size());
-    for (size_t i = 0; i < grid.Vertices.size(); ++i)
+    UINT totalVertexCount = grid.Vertices.size() + sphere.Vertices.size() + cylinder.Vertices.size() + box.Vertices.size();
+    XMFLOAT4 black(0.0f, 0.0f, 0.0f, 1.0f);
+
+    std::vector<Vertex> vertices(totalVertexCount);
+    UINT i = 0;
+    for (const auto& v : grid.Vertices)
     {
-        XMFLOAT3 p = grid.Vertices[i].Position;
-
-        p.y = GetHeight(p.x, p.z);
-
-        vertices[i].pos = p;
-
-        // 높이에 기초해서 정점의 색상을 설정한다.
-        if (p.y < -10.0f)
-        {
-            // 해변의 모래 색
-            vertices[i].color = XMFLOAT4(1.0f, 0.96f, 0.62f, 1.0f);
-        }
-        else if (p.y < 5.0f)
-        {
-            // 밝은 녹황색
-            vertices[i].color = XMFLOAT4(0.46f, 0.77f, 0.46f, 1.0f);
-        }
-        else if (p.y < 12.0f)
-        {
-            // 짙은 녹황색
-            vertices[i].color = XMFLOAT4(0.1f, 0.48f, 0.19f, 1.0f);
-        }
-        else if (p.y < 20.0f)
-        {
-            // 짙은 갈색
-            vertices[i].color = XMFLOAT4(0.45f, 0.39f, 0.34f, 1.0f);
-        }
-        else
-        {
-            // 흰색(눈)
-            vertices[i].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-        }
+        vertices[i].pos = v.Position;
+        vertices[i].color = black;
+        ++i;
     }
+    for (const auto& v : sphere.Vertices)
+    {
+        vertices[i].pos = v.Position;
+        vertices[i].color = black;
+        ++i;
+    }
+    for (const auto& v : cylinder.Vertices)
+    {
+        vertices[i].pos = v.Position;
+        vertices[i].color = black;
+        ++i;
+    }
+    for (const auto& v : box.Vertices)
+    {
+        vertices[i].pos = v.Position;
+        vertices[i].color = black;
+        ++i;
+    }
+
+    std::vector<UINT> indices;
+    indices.insert(indices.end(), grid.Indices.begin(), grid.Indices.end());
+    indices.insert(indices.end(), sphere.Indices.begin(), sphere.Indices.end());
+    indices.insert(indices.end(), cylinder.Indices.begin(), cylinder.Indices.end());
+    indices.insert(indices.end(), box.Indices.begin(), box.Indices.end());
 
     D3D11_BUFFER_DESC vbd;
     vbd.Usage = D3D11_USAGE_IMMUTABLE;
@@ -219,18 +297,16 @@ void ExampleApp::BuildGeometryBuffers()
 
     HR(md3dDevice->CreateBuffer(&vbd, &vinitData, &mVB));
 
-    // 모든 메시의 색인들을 하나의 색인 버퍼에 합쳐 넣는다.
-
     D3D11_BUFFER_DESC ibd;
     ibd.Usage = D3D11_USAGE_IMMUTABLE;
-    ibd.ByteWidth = sizeof(UINT) * mGridIndexCount;
+    ibd.ByteWidth = sizeof(UINT) * indices.size();
     ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
     ibd.CPUAccessFlags = 0;
     ibd.MiscFlags = 0;
     ibd.StructureByteStride = 0;
 
     D3D11_SUBRESOURCE_DATA iinitData;
-    iinitData.pSysMem = grid.Indices.data();
+    iinitData.pSysMem = indices.data();
 
     HR(md3dDevice->CreateBuffer(&ibd, &iinitData, &mIB));
 }
@@ -284,9 +360,4 @@ void ExampleApp::BuildVertexLayout()
     D3DX11_PASS_DESC passDesc;
     mTech->GetPassByIndex(0)->GetDesc(&passDesc);
     HR(md3dDevice->CreateInputLayout(vertexDesc, 2, passDesc.pIAInputSignature, passDesc.IAInputSignatureSize, &mInputLayout));
-}
-
-float ExampleApp::GetHeight(float x, float z) const
-{
-    return 0.3f * (z * sinf(0.1f * x) + x * cosf(0.1f * z));
 }

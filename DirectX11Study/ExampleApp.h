@@ -27,7 +27,6 @@ private:
     void BuildGeometryBuffers();
     void BuildFX();
     void BuildVertexLayout();
-    float GetHeight(float x, float z) const;
 
 private:
     ID3D11Buffer* mVB;
@@ -39,7 +38,11 @@ private:
 
     ID3D11InputLayout* mInputLayout;
 
-    XMFLOAT4X4 mWorld;
+    XMFLOAT4X4 mGridWorld;
+    XMFLOAT4X4 mSphereWorld[10];
+    XMFLOAT4X4 mCylinderWorld[10];
+    XMFLOAT4X4 mBoxWorld;
+    XMFLOAT4X4 mCenterSphere;
     XMFLOAT4X4 mView;
     XMFLOAT4X4 mProj;
 
@@ -47,6 +50,18 @@ private:
     float mPhi;
     float mRadius;
 
+    UINT mGridVertexOffset;
     UINT mGridIndexCount;
+    UINT mGridIndexOffset;
+    UINT mSphereVertexOffset;
+    UINT mSphereIndexCount;
+    UINT mSphereIndexOffset;
+    UINT mCylinderVertexOffset;
+    UINT mCylinderIndexCount;
+    UINT mCylinderIndexOffset;
+    UINT mBoxVertexOffset;
+    UINT mBoxIndexCount;
+    UINT mBoxIndexOffset;
+
     POINT mLastMousePos;
 };
