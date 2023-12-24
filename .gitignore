@@ -396,3 +396,11 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+!DXSDK/Lib/x64/
+!DXSDK/Lib/x86/
+!DXSDK/Utilities/bin/
+!DXSDK/Utilities/bin/x64/
+!DXSDK/Utilities/bin/x86/
+!DXSDK/Utilities/bin/x86/Microsoft Games for Windows Test Tool/
+!DXSDK/Utilities/bin/x86/RatingSystems/
