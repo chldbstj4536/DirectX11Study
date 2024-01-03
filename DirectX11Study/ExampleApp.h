@@ -4,8 +4,8 @@
 
 struct Vertex
 {
-    XMFLOAT3 pos;
-    XMFLOAT4 color;
+    XMFLOAT3 Pos;
+    XMFLOAT4 Color;
 };
 
 class ExampleApp : public D3DApp

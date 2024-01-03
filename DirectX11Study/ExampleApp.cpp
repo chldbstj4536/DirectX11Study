@@ -255,26 +255,26 @@ void ExampleApp::BuildGeometryBuffers()
     UINT i = 0;
     for (const auto& v : grid.Vertices)
     {
-        vertices[i].pos = v.Position;
-        vertices[i].color = black;
+        vertices[i].Pos = v.Position;
+        vertices[i].Color = black;
         ++i;
     }
     for (const auto& v : sphere.Vertices)
     {
-        vertices[i].pos = v.Position;
-        vertices[i].color = black;
+        vertices[i].Pos = v.Position;
+        vertices[i].Color = black;
         ++i;
     }
     for (const auto& v : cylinder.Vertices)
     {
-        vertices[i].pos = v.Position;
-        vertices[i].color = black;
+        vertices[i].Pos = v.Position;
+        vertices[i].Color = black;
         ++i;
     }
     for (const auto& v : box.Vertices)
     {
-        vertices[i].pos = v.Position;
-        vertices[i].color = black;
+        vertices[i].Pos = v.Position;
+        vertices[i].Color = black;
         ++i;
     }
 
@@ -321,8 +321,14 @@ void ExampleApp::BuildFX()
 
     ID3D10Blob* compiledShader = 0;
     ID3D10Blob* compilationMsgs = 0;
+#ifdef _UNICODE
+    std::wstring path = TEXT(_OUTPUT_PATH);
+#else
+    std::string path = TEXT(_OUTPUT_PATH);
+#endif
+    path.append(TEXT("FX/color.fx"));
 
-    HRESULT hr = D3DX11CompileFromFile(L"D:/Project/VisualStudio/DirectX11Study/FX/color.fx", 0, 0, 0, "fx_5_0", shaderFlags, 0, 0, &compiledShader, &compilationMsgs, 0);
+    HRESULT hr = D3DX11CompileFromFile(path.c_str(), 0, 0, 0, "fx_5_0", shaderFlags, 0, 0, &compiledShader, &compilationMsgs, 0);
 
     // compilationMsgs에 오류 메시지나 경고 메시지가 저장되어 있을 수 있다.
     if (compilationMsgs != 0)
