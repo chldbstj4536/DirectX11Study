@@ -4,12 +4,8 @@
 
 struct Vertex
 {
-    XMFLOAT3 Pos;
-    XMFLOAT3 Tangent;
-    XMFLOAT3 Normal;
-    XMFLOAT2 Tex0;
-    XMFLOAT2 Tex1;
-    XMFLOAT4 Color;
+    XMFLOAT3 pos;
+    XMFLOAT3 normal;
 };
 
 class ExampleApp : public D3DApp
@@ -38,7 +34,14 @@ private:
 
     ID3DX11Effect* mFX;
     ID3DX11EffectTechnique* mTech;
+    ID3DX11EffectMatrixVariable* mfxWorld;
+    ID3DX11EffectMatrixVariable* mfxWorldInvTranspose;
     ID3DX11EffectMatrixVariable* mfxWorldViewProj;
+    ID3DX11EffectVariable* mfxDirLight;
+    ID3DX11EffectVariable* mfxPointLight;
+    ID3DX11EffectVariable* mfxSpotLight;
+    ID3DX11EffectVariable* mfxEyePosW;
+    ID3DX11EffectVariable* mfxMaterial;
 
     ID3D11InputLayout* mInputLayout;
 
@@ -49,6 +52,14 @@ private:
     XMFLOAT4X4 mCenterSphere;
     XMFLOAT4X4 mView;
     XMFLOAT4X4 mProj;
+
+    XMFLOAT3 mEyePosW;
+
+    DirectionalLight mDirLight;
+    PointLight mPointLight;
+    SpotLight mSpotLight;
+    Material mLandMat;
+    Material mCylinderMat;
 
     float mTheta;
     float mPhi;

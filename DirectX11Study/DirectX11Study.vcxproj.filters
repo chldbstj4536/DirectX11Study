@@ -100,5 +100,8 @@
     <FxCompile Include="..\FX\color.fx">
       <Filter>리소스 파일</Filter>
     </FxCompile>
+    <FxCompile Include="..\FX\LightHelper.fx">
+      <Filter>리소스 파일</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

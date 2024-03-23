@@ -7,7 +7,14 @@ ExampleApp::ExampleApp(HINSTANCE hInstance)
     , mIB(nullptr)
     , mFX(nullptr)
     , mTech(nullptr)
+    , mfxWorld(nullptr)
+    , mfxWorldInvTranspose(nullptr)
     , mfxWorldViewProj(nullptr)
+    , mfxDirLight(nullptr)
+    , mfxPointLight(nullptr)
+    , mfxSpotLight(nullptr)
+    , mfxEyePosW(nullptr)
+    , mfxMaterial(nullptr)
     , mInputLayout(nullptr)
     , mTheta(1.5f * MathHelper::Pi)
     , mPhi(0.25f * MathHelper::Pi)
@@ -21,6 +28,37 @@ ExampleApp::ExampleApp(HINSTANCE hInstance)
     XMMATRIX I = XMMatrixIdentity();
     XMStoreFloat4x4(&mView, I);
     XMStoreFloat4x4(&mProj, I);
+
+    // ï¿½ï¿½ï¿½â±¤ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+    mDirLight.Ambient = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
+    mDirLight.Diffuse = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+    mDirLight.Specular = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+    mDirLight.Direction = XMFLOAT3(0.57735f, -0.57735f, 0.57735f);
+
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ -- ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½Ö´Ï¸ï¿½ï¿½Ì¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ó¸ï¿½ï¿½ï¿½
+    // UpdateScene ï¿½Þ¼ï¿½ï¿½å¿¡ï¿½ï¿½ ï¿½ï¿½ï¿½ÅµÈ´ï¿½.
+    mPointLight.Ambient = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
+    mPointLight.Diffuse = XMFLOAT4(0.7f, 0.7f, 0.7f, 1.0f);
+    mPointLight.Specular = XMFLOAT4(0.7f, 0.7f, 0.7f, 1.0f);
+    mPointLight.Att = XMFLOAT3(0.0f, 0.1f, 0.0f);
+    mPointLight.Range = 25.0f;
+
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ -- ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ö´Ï¸ï¿½ï¿½Ì¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ó¸ï¿½ï¿½ï¿½
+    // UpdateScene ï¿½Þ¼ï¿½ï¿½å¿¡ï¿½ï¿½ ï¿½ï¿½ï¿½ÅµÈ´ï¿½.
+    mSpotLight.Ambient = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+    mSpotLight.Diffuse = XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f);
+    mSpotLight.Specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    mSpotLight.Att = XMFLOAT3(1.0f, 0.0f, 0.0f);
+    mSpotLight.Spot = 96.0f;
+    mSpotLight.Range = 10000.0f;
+
+    mLandMat.Ambient = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
+    mLandMat.Diffuse = XMFLOAT4(0.48f, 0.77f, 0.46f, 1.0f);
+    mLandMat.Specular = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
+
+    mCylinderMat.Ambient = XMFLOAT4(0.137f, 0.42f, 0.556f, 1.0f);
+    mCylinderMat.Diffuse = XMFLOAT4(0.137f, 0.42f, 0.556f, 1.0f);
+    mCylinderMat.Specular = XMFLOAT4(0.8f, 0.8f, 0.8f, 96.0f);
 }
 
 ExampleApp::~ExampleApp()
@@ -40,7 +78,7 @@ bool ExampleApp::Init()
     BuildFX();
     BuildVertexLayout();
 
-    // ±¹¼Ò °ø°£¿¡¼­ ¼¼°è °ø°£À¸·ÎÀÇ º¯È¯ Çà·ÄÀ» Á¤ÀÇ
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     XMMATRIX I = XMMatrixIdentity();
     XMStoreFloat4x4(&mGridWorld, I);
 
@@ -52,7 +90,7 @@ bool ExampleApp::Init()
     XMMATRIX centerSphereOffset = XMMatrixTranslation(0.0f, 2.0f, 0.0f);
     XMStoreFloat4x4(&mCenterSphere, XMMatrixMultiply(centerSphereScale, centerSphereOffset));
 
-    // ¿ø±âµÕµéÀº ´Ù¼¸ÁÙ·Î ¹èÄ¡µÇ´Âµ¥, ÇÏ³ªÀÇ ÁÙÀº µÎ °³ÀÇ ¿ø±âµÕ + ±¸ ½ÖÀ¸·Î ÀÌ·ç¾îÁø´Ù.
+    // ï¿½ï¿½ï¿½ï¿½Õµï¿½ï¿½ï¿½ ï¿½Ù¼ï¿½ï¿½Ù·ï¿½ ï¿½ï¿½Ä¡ï¿½Ç´Âµï¿½, ï¿½Ï³ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ + ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ì·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½.
     for (int i = 0; i < 5; ++i)
     {
         XMStoreFloat4x4(&mCylinderWorld[i * 2 + 0], XMMatrixTranslation(-5.0f, 1.5f, -10.0f + i * 5.0f));
@@ -68,25 +106,37 @@ void ExampleApp::OnResize()
 {
     D3DApp::OnResize();
 
-    // Ã¢ÀÇ Å©±â°¡ º¯ÇßÀ¸¹Ç·Î Á¾È¾ºñ¸¦ °»½ÅÇÏ°í Åõ¿µ Çà·ÄÀ» ´Ù½Ã °è»êÇÑ´Ù.
+    // Ã¢ï¿½ï¿½ Å©ï¿½â°¡ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ ï¿½ï¿½È¾ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
     XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, AspectRatio(), 1.0f, 1000.0f);
     XMStoreFloat4x4(&mProj, P);
 }
 
 void ExampleApp::UpdateScene(float dt)
 {
-    // ±¸¸é ÁÂÇ¥¸¦ µ¥Ä«¸£Æ® ÁÂÇ¥·Î º¯È¯ÇÑ´Ù.
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ç¥ï¿½ï¿½ ï¿½ï¿½Ä«ï¿½ï¿½Æ® ï¿½ï¿½Ç¥ï¿½ï¿½ ï¿½ï¿½È¯ï¿½Ñ´ï¿½.
     float x = mRadius * sinf(mPhi) * cosf(mTheta);
     float z = mRadius * sinf(mPhi) * sinf(mTheta);
     float y = mRadius * cosf(mPhi);
 
-    // ½Ã¾ß Çà·ÄÀ» ±¸ÃàÇÑ´Ù.
+    mEyePosW = XMFLOAT3(x, y, z);
+
+    // ï¿½Ã¾ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
     XMVECTOR pos = XMVectorSet(x, y, z, 1.0f);
     XMVECTOR target = XMVectorZero();
     XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
     XMMATRIX V = XMMatrixLookAtLH(pos, target, up);
     XMStoreFloat4x4(&mView, V);
+
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½×¸ï¿½ï¿½é¼­ ï¿½Ìµï¿½ï¿½Ï°ï¿½ ï¿½Ñ´ï¿½.
+    mPointLight.Position.x = 70.0f * cosf(0.2f * mTimer.TotalTime());
+    mPointLight.Position.z = 70.0f * sinf(0.2f * mTimer.TotalTime());
+    mPointLight.Position.y = 10.0f;
+
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ä«ï¿½Þ¶ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ï¿½ï¿½ Ä«ï¿½Þ¶ï¿½ ï¿½Ù¶óº¸´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½.
+    // ï¿½Ì¿ï¿½ ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½Ä¡ ï¿½ï¿½ï¿½ï¿½ï¿½Ú°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ù´Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ È¿ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
+    mSpotLight.Position = mEyePosW;
+    XMStoreFloat3(&mSpotLight.Direction, XMVector3Normalize(target - pos));
 }
 
 void ExampleApp::DrawScene()
@@ -94,10 +144,10 @@ void ExampleApp::DrawScene()
     assert(md3dImmediateContext);
     assert(mSwapChain);
 
-    // ÈÄ¸é ¹öÆÛ¸¦ ÆÄ¶õ»öÀ¸·Î Áö¿î´Ù. Colors::Blue´Â d3dUtil.h¿¡ Á¤ÀÇµÇ¾î ÀÖ´Ù.
+    // ï¿½Ä¸ï¿½ ï¿½ï¿½ï¿½Û¸ï¿½ ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½. Colors::Blueï¿½ï¿½ d3dUtil.hï¿½ï¿½ ï¿½ï¿½ï¿½ÇµÇ¾ï¿½ ï¿½Ö´ï¿½.
     md3dImmediateContext->ClearRenderTargetView(mRenderTargetView, reinterpret_cast<const float*>(&Colors::LightSteelBlue));
 
-    // ±íÀÌ ¹öÆÛ¸¦ 1.0f, ½ºÅÙ½Ç ¹öÆÛ¸¦ 0À¸·Î Áö¿î´Ù.
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Û¸ï¿½ 1.0f, ï¿½ï¿½ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½Û¸ï¿½ 0ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½.
     md3dImmediateContext->ClearDepthStencilView(mDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
     md3dImmediateContext->IASetInputLayout(mInputLayout);
@@ -108,7 +158,9 @@ void ExampleApp::DrawScene()
     md3dImmediateContext->IASetVertexBuffers(0, 1, &mVB, &stride, &offset);
     md3dImmediateContext->IASetIndexBuffer(mIB, DXGI_FORMAT_R32_UINT, 0);
 
-    // »ó¼öµéÀ» ¼³Á¤ÇÑ´Ù.
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
+    XMMATRIX world;
+    XMMATRIX worldInvTranspose;
     XMMATRIX view = XMLoadFloat4x4(&mView);
     XMMATRIX proj = XMLoadFloat4x4(&mProj);
     XMMATRIX viewProj = view * proj;
@@ -117,9 +169,20 @@ void ExampleApp::DrawScene()
     D3DX11_TECHNIQUE_DESC techDesc;
     mTech->GetDesc(&techDesc);
 
-    // ±×¸®µå ±×¸®±â
-    worldViewProj = XMLoadFloat4x4(&mGridWorld) * viewProj;
+    mfxDirLight->SetRawValue(&mDirLight, 0, sizeof(mDirLight));
+    mfxPointLight->SetRawValue(&mPointLight, 0, sizeof(mPointLight));
+    mfxSpotLight->SetRawValue(&mSpotLight, 0, sizeof(mSpotLight));
+    mfxEyePosW->SetRawValue(&mEyePosW, 0, sizeof(mEyePosW));
+
+
+    // ï¿½×¸ï¿½ï¿½ï¿½ ï¿½×¸ï¿½ï¿½ï¿½
+    world = XMLoadFloat4x4(&mGridWorld);
+    worldInvTranspose = MathHelper::InverseTranspose(world);
+    worldViewProj = world * viewProj;
+    mfxWorld->SetMatrix(reinterpret_cast<float*>(&world));
+    mfxWorldInvTranspose->SetMatrix(reinterpret_cast<float*>(&worldInvTranspose));
     mfxWorldViewProj->SetMatrix(reinterpret_cast<float*>(&worldViewProj));
+    mfxMaterial->SetRawValue(&mLandMat, 0, sizeof(mLandMat));
     for (UINT p = 0; p < techDesc.Passes; ++p)
     {
         mTech->GetPassByIndex(p)->Apply(0, md3dImmediateContext);
@@ -127,11 +190,18 @@ void ExampleApp::DrawScene()
     }
 
 
-    // ±¸ ±×¸®±â
+    mfxMaterial->SetRawValue(&mLandMat, 0, sizeof(mLandMat));
+
+    // ï¿½ï¿½ ï¿½×¸ï¿½ï¿½ï¿½
     for (int i = 0; i < 10; ++i)
     {
-        worldViewProj = XMLoadFloat4x4(&mSphereWorld[i]) * view * proj;
+        world = XMLoadFloat4x4(&mSphereWorld[i]);
+        worldInvTranspose = MathHelper::InverseTranspose(world);
+        worldViewProj = world * viewProj;
+        mfxWorld->SetMatrix(reinterpret_cast<float*>(&world));
+        mfxWorldInvTranspose->SetMatrix(reinterpret_cast<float*>(&worldInvTranspose));
         mfxWorldViewProj->SetMatrix(reinterpret_cast<float*>(&worldViewProj));
+
         for (UINT p = 0; p < techDesc.Passes; ++p)
         {
             mTech->GetPassByIndex(p)->Apply(0, md3dImmediateContext);
@@ -139,11 +209,16 @@ void ExampleApp::DrawScene()
         }
     }
 
-    // ¿ø»Ô ±×¸®±â
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½×¸ï¿½ï¿½ï¿½
     for (int i = 0; i < 10; ++i)
     {
-        worldViewProj = XMLoadFloat4x4(&mCylinderWorld[i]) * view * proj;
+        world = XMLoadFloat4x4(&mCylinderWorld[i]);
+        worldInvTranspose = MathHelper::InverseTranspose(world);
+        worldViewProj = world * viewProj;
+        mfxWorld->SetMatrix(reinterpret_cast<float*>(&world));
+        mfxWorldInvTranspose->SetMatrix(reinterpret_cast<float*>(&worldInvTranspose));
         mfxWorldViewProj->SetMatrix(reinterpret_cast<float*>(&worldViewProj));
+
         for (UINT p = 0; p < techDesc.Passes; ++p)
         {
             mTech->GetPassByIndex(p)->Apply(0, md3dImmediateContext);
@@ -152,8 +227,12 @@ void ExampleApp::DrawScene()
     }
 
 
-    // »óÀÚ ±×¸®±â
-    worldViewProj = XMLoadFloat4x4(&mBoxWorld) * viewProj;
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½×¸ï¿½ï¿½ï¿½
+    world = XMLoadFloat4x4(&mBoxWorld);
+    worldInvTranspose = MathHelper::InverseTranspose(world);
+    worldViewProj = world * viewProj;
+    mfxWorld->SetMatrix(reinterpret_cast<float*>(&world));
+    mfxWorldInvTranspose->SetMatrix(reinterpret_cast<float*>(&worldInvTranspose));
     mfxWorldViewProj->SetMatrix(reinterpret_cast<float*>(&worldViewProj));
     for (UINT p = 0; p < techDesc.Passes; ++p)
     {
@@ -162,7 +241,7 @@ void ExampleApp::DrawScene()
     }
 
 
-    // Áß¾Ó ±¸Ã¼ ±×¸®±â
+    // ï¿½ß¾ï¿½ ï¿½ï¿½Ã¼ ï¿½×¸ï¿½ï¿½ï¿½
     worldViewProj = XMLoadFloat4x4(&mCenterSphere) * viewProj;
     mfxWorldViewProj->SetMatrix(reinterpret_cast<float*>(&worldViewProj));
     for (UINT p = 0; p < techDesc.Passes; ++p)
@@ -171,7 +250,7 @@ void ExampleApp::DrawScene()
         md3dImmediateContext->DrawIndexed(mSphereIndexCount, mSphereIndexOffset, mSphereVertexOffset);
     }
 
-    // ÈÄ¸é ¹öÆÛ¸¦ È­¸é¿¡ Á¦½ÃÇÑ´Ù.
+    // ï¿½Ä¸ï¿½ ï¿½ï¿½ï¿½Û¸ï¿½ È­ï¿½é¿¡ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
     HR(mSwapChain->Present(0, 0));
 }
 
@@ -192,27 +271,27 @@ void ExampleApp::OnMouseMove(WPARAM btnState, int x, int y)
 {
     if ((btnState & MK_LBUTTON) != 0)
     {
-        // 1ÇÈ¼¿ÀÌ 4ºÐÀÇ 1µµ (degree ´ÜÀ§)°¡ µÇ°Ô ÇÑ´Ù.
+        // 1ï¿½È¼ï¿½ï¿½ï¿½ 4ï¿½ï¿½ï¿½ï¿½ 1ï¿½ï¿½ (degree ï¿½ï¿½ï¿½ï¿½)ï¿½ï¿½ ï¿½Ç°ï¿½ ï¿½Ñ´ï¿½.
         float dx = XMConvertToRadians(0.25f * static_cast<float>(x - mLastMousePos.x));
         float dy = XMConvertToRadians(0.25f * static_cast<float>(y - mLastMousePos.y));
 
-        // ¸¶¿ì½º ÀÔ·Â¿¡ ±âÃÊÇÑ °¢µµ·Î »óÀÚ ÁÖº¯ÀÇ ±Ëµµ Ä«¸Þ¶ó¸¦ °»½ÅÇÑ´Ù.
+        // ï¿½ï¿½ï¿½ì½º ï¿½Ô·Â¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Öºï¿½ï¿½ï¿½ ï¿½Ëµï¿½ Ä«ï¿½Þ¶ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
         mTheta += dx;
         mPhi += dy;
 
-        // °¢µµ¸¦ mphi·Î ÇÑÁ¤ÇÑ´Ù.
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ mphiï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
         mPhi = MathHelper::Clamp(mPhi, 0.1f, MathHelper::Pi - 0.1f);
     }
     else if ((btnState & MK_RBUTTON) != 0)
     {
-        // 1ÇÈ¼¿ÀÌ Àå¸éÀÇ 0.005´ÜÀ§°¡ µÇ°Ô ÇÑ´Ù.
+        // 1ï¿½È¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ 0.005ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ç°ï¿½ ï¿½Ñ´ï¿½.
         float dx = 0.005f * static_cast<float>(x - mLastMousePos.x);
         float dy = 0.005f * static_cast<float>(y - mLastMousePos.y);
 
-        // ¸¶¿ì½º ÀÔ·Â¿¡ ±âÃÊÇØ¼­ ±Ëµµ Ä«¸Þ¶óÀÇ ¹ÝÁö¸§À» °»½ÅÇÑ´Ù.
+        // ï¿½ï¿½ï¿½ì½º ï¿½Ô·Â¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ø¼ï¿½ ï¿½Ëµï¿½ Ä«ï¿½Þ¶ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
         mRadius += dx - dy;
 
-        // ¹ÝÁö¸§À» Æ¯Á¤ ¹üÀ§·Î ÇÑÁ¤ÇÑ´Ù.
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Æ¯ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
         mRadius = MathHelper::Clamp(mRadius, 3.0f, 15.0f);
     }
 
@@ -249,48 +328,31 @@ void ExampleApp::BuildGeometryBuffers()
     mBoxIndexOffset = mCylinderIndexOffset + cylinder.Indices.size();
 
     UINT totalVertexCount = grid.Vertices.size() + sphere.Vertices.size() + cylinder.Vertices.size() + box.Vertices.size();
-    XMFLOAT4 black(0.0f, 0.0f, 0.0f, 1.0f);
 
     std::vector<Vertex> vertices(totalVertexCount);
     UINT i = 0;
     for (const auto& v : grid.Vertices)
     {
-        vertices[i].Pos = v.Position;
-        vertices[i].Tangent = v.TangentU;
-        vertices[i].Normal = v.Normal;
-        vertices[i].Tex0 = v.TexC;
-        vertices[i].Tex1 = v.TexC;
-        vertices[i].Color = black;
+        vertices[i].pos = v.Position;
+        vertices[i].normal = v.Normal;
         ++i;
     }
     for (const auto& v : sphere.Vertices)
     {
-        vertices[i].Pos = v.Position;
-        vertices[i].Tangent = v.TangentU;
-        vertices[i].Normal = v.Normal;
-        vertices[i].Tex0 = v.TexC;
-        vertices[i].Tex1 = v.TexC;
-        vertices[i].Color = black;
+        vertices[i].pos = v.Position;
+        vertices[i].normal = v.Normal;
         ++i;
     }
     for (const auto& v : cylinder.Vertices)
     {
-        vertices[i].Pos = v.Position;
-        vertices[i].Tangent = v.TangentU;
-        vertices[i].Normal = v.Normal;
-        vertices[i].Tex0 = v.TexC;
-        vertices[i].Tex1 = v.TexC;
-        vertices[i].Color = black;
+        vertices[i].pos = v.Position;
+        vertices[i].normal = v.Normal;
         ++i;
     }
     for (const auto& v : box.Vertices)
     {
-        vertices[i].Pos = v.Position;
-        vertices[i].Tangent = v.TangentU;
-        vertices[i].Normal = v.Normal;
-        vertices[i].Tex0 = v.TexC;
-        vertices[i].Tex1 = v.TexC;
-        vertices[i].Color = black;
+        vertices[i].pos = v.Position;
+        vertices[i].normal = v.Normal;
         ++i;
     }
 
@@ -346,15 +408,15 @@ void ExampleApp::BuildFX()
 
     HRESULT hr = D3DX11CompileFromFile(path.c_str(), 0, 0, 0, "fx_5_0", shaderFlags, 0, 0, &compiledShader, &compilationMsgs, 0);
 
-    // compilationMsgs¿¡ ¿À·ù ¸Þ½ÃÁö³ª °æ°í ¸Þ½ÃÁö°¡ ÀúÀåµÇ¾î ÀÖÀ» ¼ö ÀÖ´Ù.
+    // compilationMsgsï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Þ½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Þ½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ç¾ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ö´ï¿½.
     if (compilationMsgs != 0)
     {
         MessageBoxA(0, (char*)compilationMsgs->GetBufferPointer(), 0, 0);
         ReleaseCOM(compilationMsgs);
     }
 
-    // compilationMsgs¿¡ ¿À·ù ¸Þ½ÃÁö°¡ ¾ø¾ú´Ù°í ÇØµµ ÄÄÆÄÀÏ ¿À·ù ¿©ºÎ¸¦
-    // ¸í½ÃÀûÀ¸·Î Á¡°ËÇÏ´Â °ÍÀÌ ¹Ù¶÷Á÷ÇÏ´Ù
+    // compilationMsgsï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Þ½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ù°ï¿½ ï¿½Øµï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Î¸ï¿½
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ù¶ï¿½ï¿½ï¿½ï¿½Ï´ï¿½
     if (FAILED(hr))
     {
         assert(true);
@@ -362,28 +424,32 @@ void ExampleApp::BuildFX()
 
     HR(D3DX11CreateEffectFromMemory(compiledShader->GetBufferPointer(), compiledShader->GetBufferSize(), 0, md3dDevice, &mFX));
 
-    // ÄÄÆÄÀÏµÈ ¼ÎÀÌ´õ ÀÚ·á¸¦ ´Ù »ç¿ëÇßÀ¸¹Ç·Î ÇØÁ¦ÇÑ´Ù.
+    // ï¿½ï¿½ï¿½ï¿½ï¿½Ïµï¿½ ï¿½ï¿½ï¿½Ì´ï¿½ ï¿½Ú·á¸¦ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
     ReleaseCOM(compiledShader);
 
     mTech = mFX->GetTechniqueByName("ColorTech");
+    mfxWorld = mFX->GetVariableByName("gWorld")->AsMatrix();
+    mfxWorldInvTranspose = mFX->GetVariableByName("gWorldInvTranspose")->AsMatrix();
     mfxWorldViewProj = mFX->GetVariableByName("gWorldViewProj")->AsMatrix();
+    mfxDirLight = mFX->GetVariableByName("gDirLight");
+    mfxPointLight = mFX->GetVariableByName("gPointLight");
+    mfxSpotLight = mFX->GetVariableByName("gSpotLight");
+    mfxEyePosW = mFX->GetVariableByName("gEyePosW");
+    mfxMaterial = mFX->GetVariableByName("gMaterial");
 }
 
 void ExampleApp::BuildVertexLayout()
 {
-    // Á¤Á¡ ÀÔ·Â ¹èÄ¡¸¦ ¸¸µç´Ù.
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½Ô·ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½.
     D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
     {
         {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-        {"TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
-        {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0},
-        {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 36, D3D11_INPUT_PER_VERTEX_DATA, 0},
-        {"TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 44, D3D11_INPUT_PER_VERTEX_DATA, 0},
-        {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 52, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
     };
 
-    // ÀÔ·Â ¹èÄ¡ °´Ã¼¸¦ »ý¼ºÇÑ´Ù.
+    // ï¿½Ô·ï¿½ ï¿½ï¿½Ä¡ ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
     D3DX11_PASS_DESC passDesc;
     mTech->GetPassByIndex(0)->GetDesc(&passDesc);
     HR(md3dDevice->CreateInputLayout(vertexDesc, sizeof(vertexDesc) / sizeof(vertexDesc[0]), passDesc.pIAInputSignature, passDesc.IAInputSignatureSize, &mInputLayout));
 }
+

@@ -1,52 +1,92 @@
+#include "LightHelper.fx"
+
+cbuffer cbPerFrame
+{
+    DirectionalLight gDirLight;
+    PointLight gPointLight;
+    SpotLight gSpotLight;
+    float3 gEyePosW;
+};
+
 cbuffer cbPerObject
 {
+    float4x4 gWorld;
+    float4x4 gWorldInvTranspose;
     float4x4 gWorldViewProj;
+    Material gMaterial;
 };
 
 struct VertexIn
 {
-    float3 Pos : POSITION;
-    float3 Tangent : TANGENT;
-    float3 Normal : NORMAL;
-    float2 Tex0 : TEXCOORD0;
-    float2 Tex1 : TEXCOORD1;
-    float4 Color : COLOR;
+    float3 PosL : POSITION;
+    float3 NormalL : NORMAL;
 };
 
 struct VertexOut
 {
-    float4 PosH : SV_Position;
-    float4 Color : COLOR;
+    float4 PosH : SV_POSITION;
+    float3 PosW : TEXCOORD0;
+    float3 NormalW : TEXCOORD1;
 };
 
 VertexOut VS(VertexIn vin)
 {
     VertexOut vout;
     
-    // µ¿Â÷ Àý´Ü °ø°£À¸·Î º¯È¯
-    vout.PosH = mul(float4(vin.Pos, 1.0f), gWorldViewProj);
-    vout.Color = vin.Color;
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯ï¿½Ñ´ï¿½.
+    vout.PosW = mul(float4(vin.PosL, 1.0f), gWorld).xyz;
+    vout.NormalW = mul(vin.NormalL, (float3x3) gWorldInvTranspose);
+
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯
+    vout.PosH = mul(float4(vin.PosL, 1.0f), gWorldViewProj);
 
     return vout;
 }
 
 float4 PS(VertexOut pin) : SV_Target
 {
-    return pin.Color;
-}
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ì»ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í°ï¿½ ï¿½Æ´ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½ï¿½È­ï¿½Ñ´ï¿½.
+    pin.NormalW = normalize(pin.NormalW);
 
-RasterizerState rsWireframe
-{
-    FillMode = WireFrame;
-};
+    float3 toEyeW = normalize(gEyePosW - pin.PosW);
+
+    // ï¿½ï¿½ï¿½Ðµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ 0ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ó¼ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
+    float4 ambient = 0.0f;
+    float4 diffuse = 0.0f;
+    float4 spec = 0.0f;
+    
+    // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½â¿©ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ñ´ï¿½.
+    float4 A, D, S;
+    
+    ComputeDirectionalLight(gMaterial, gDirLight, pin.NormalW, toEyeW, A, D, S);
+    ambient += A;
+    diffuse += D;
+    spec += S;
+
+    ComputePointLight(gMaterial, gPointLight, pin.PosW, pin.NormalW, toEyeW, A, D, S);
+    ambient += A;
+    diffuse += D;
+    spec += S;
+
+    ComputeSpotLight(gMaterial, gSpotLight, pin.PosW, pin.NormalW, toEyeW, A, D, S);
+    ambient += A;
+    diffuse += D;
+    spec += S;
+
+    float4 litColor = ambient + diffuse + spec;
+    
+    // ï¿½Ð»ê±¤ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ä¿ï¿½ ï¿½Ø½ï¿½Ã³ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
+    litColor.a = gMaterial.Diffuse.a;
+
+    return litColor;
+}
 
 technique11 ColorTech
 {
     pass P0
     {
         SetVertexShader(CompileShader(vs_5_0, VS()));
+        SetGeometryShader(NULL);
         SetPixelShader(CompileShader(ps_5_0, PS()));
-
-        SetRasterizerState(rsWireframe);
     }
 }
